@@ -62,11 +62,12 @@
   <div class="subtitle">Mechanical backtest of the exact opening-range/VWAP/RVOL rules the live scanner uses</div>
   <div class="refresh-note" id="refresh-note"></div>
 
-  <div class="banner">
-    Every qualifying setup in the window below became one simulated trade: stop-loss and 2:1 target checked bar-by-bar,
+  <div class="banner" id="method-banner">
+    Every qualifying setup in the window below became one simulated trade: stop-loss and target checked bar-by-bar,
     unresolved trades closed at end of day. This is a mechanical test of the <em>rule</em>, not a live track record —
     real trading adds slippage, the free-data lag noted on Morning Picks, and your own judgment on which setups to actually take.
-    Past performance, simulated or real, does not predict future results.
+    Past performance, simulated or real, does not predict future results. Sample sizes here are still small (see trade
+    counts below) — treat these numbers as directional, not final, and re-run periodically as more data accumulates.
   </div>
 
   <div class="stat-grid" id="stats"></div>

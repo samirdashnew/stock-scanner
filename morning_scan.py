@@ -55,7 +55,7 @@ def load_symbols(path: str) -> list[str]:
 def fetch_daily(symbols: list[str]) -> pd.DataFrame:
     print(f"Fetching daily history for {len(symbols)} symbols...")
     return yf.download(
-        symbols, period="40d", interval="1d", group_by="ticker",
+        symbols, period="90d", interval="1d", group_by="ticker",
         auto_adjust=True, threads=True, progress=False,
     )
 
@@ -71,7 +71,8 @@ def fetch_intraday(symbols: list[str]) -> pd.DataFrame:
 def clean(row: dict) -> dict:
     out = {k: v for k, v in row.items() if k != "qualifies"}
     for k in ("entry", "stop_loss", "target", "risk_pct", "vwap", "gap_pct",
-              "or_high", "or_low", "atr14", "rvol_early", "score"):
+              "or_high", "or_low", "atr14", "rvol_early", "score",
+              "ema9", "ema15", "ema50", "rsi14", "adx14"):
         out[k] = round(out[k], 2)
     out["avg_turnover_cr"] = round(out["avg_turnover_cr"], 1)
     out["reward_multiple"] = core.REWARD_MULTIPLE
@@ -139,6 +140,8 @@ def main():
             "risk_pct_range": [core.MIN_RISK_PCT, core.MAX_RISK_PCT],
             "min_avg_turnover_cr": core.MIN_AVG_TURNOVER_CR,
             "reward_multiple": core.REWARD_MULTIPLE,
+            "min_adx": core.MIN_ADX,
+            "sell_enabled": core.SELL_ENABLED,
         },
     }
 

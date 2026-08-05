@@ -142,8 +142,10 @@ def summarize(trades: list[dict]) -> dict:
 
 def main():
     symbols = load_symbols(SYMBOLS_FILE)
-    print(f"Fetching ~120d daily history for {len(symbols)} symbols...")
-    daily_raw = yf.download(symbols, period="120d", interval="1d", group_by="ticker",
+    print(f"Fetching ~250d daily history for {len(symbols)} symbols "
+          f"(need 55+ trading days of buffer before the earliest backtest day, "
+          f"for a stable EMA50/ADX14)...")
+    daily_raw = yf.download(symbols, period="250d", interval="1d", group_by="ticker",
                              auto_adjust=True, threads=True, progress=False)
     print(f"Fetching 60d intraday (5m) history for {len(symbols)} symbols "
           f"(Yahoo's max window for 5m bars, ~2 months of trading days)...")

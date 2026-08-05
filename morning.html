@@ -165,8 +165,8 @@
 
   <div class="legend">
     <div><code>RVOL (early)</code> = volume so far today, scaled to a full trading day, vs the 20-day average — the volume-conviction signal.</div>
-    <div><code>Target</code> = entry &plusmn; 2 &times; (entry − stop), a 2:1 reward:risk level, not a price prediction.</div>
-    <div>BUY: broke above the first-15-min high, trading above VWAP, early RVOL ≥ 1.5x, stop within ~1.5% of entry. SELL: mirror image — broke below the first-15-min low, trading below VWAP, same volume/stop conditions.</div>
+    <div id="target-legend"><code>Target</code> = entry &plusmn; reward-multiple &times; (entry − stop), not a price prediction.</div>
+    <div>BUY: broke above the first-15-min high, trading above VWAP, early RVOL ≥ 1.5x, stop within ~1.5% of entry, AND trading with the daily trend (previous close above EMA50) with a strong trend (daily ADX14 ≥ 20) and RSI not already exhausted. SELL: full mirror image on every condition.</div>
   </div>
 </div>
 
@@ -185,7 +185,7 @@ function renderCards(picks, direction) {
           <div class="val">₹${p.stop_loss.toFixed(2)}</div>
         </div>
         <div class="level-box target">
-          <div class="lbl">Target (2R)</div>
+          <div class="lbl">Target (${p.reward_multiple}R)</div>
           <div class="val">₹${p.target.toFixed(2)}</div>
         </div>
         <div class="level-box">
@@ -198,10 +198,14 @@ function renderCards(picks, direction) {
       <div class="meta-row"><span class="k">Opening range</span><span class="v">₹${p.or_low.toFixed(2)} – ₹${p.or_high.toFixed(2)}</span></div>
       <div class="meta-row"><span class="k">ATR (14d)</span><span class="v">₹${p.atr14.toFixed(2)}</span></div>
       <div class="meta-row"><span class="k">Avg turnover</span><span class="v">₹${p.avg_turnover_cr.toFixed(0)}Cr</span></div>
+      <div class="meta-row"><span class="k">Daily RSI(14) / ADX(14)</span><span class="v">${p.rsi14.toFixed(0)} / ${p.adx14.toFixed(0)}</span></div>
+      <div class="meta-row"><span class="k">EMA(9/15/50)</span><span class="v">₹${p.ema9.toFixed(1)}/${p.ema15.toFixed(1)}/${p.ema50.toFixed(1)}</span></div>
       <div class="chips">
         <span class="chip">${direction === "buy" ? "OR Breakout" : "OR Breakdown"}</span>
         <span class="chip">${direction === "buy" ? "Above VWAP" : "Below VWAP"}</span>
         <span class="chip">Vol Surge</span>
+        <span class="chip">${direction === "buy" ? "Uptrend (EMA50)" : "Downtrend (EMA50)"}</span>
+        <span class="chip">Trend Strength (ADX)</span>
       </div>
     </div>
   `).join("");
@@ -211,16 +215,19 @@ async function load() {
   const res = await fetch("morning_picks.json", { cache: "no-store" });
   const d = await res.json();
 
+  const sellEnabled = d.filters.sell_enabled;
+  document.getElementById("target-legend").innerHTML =
+    `<code>Target</code> = entry &plusmn; ${d.filters.reward_multiple} &times; (entry − stop), a ${d.filters.reward_multiple}:1 reward:risk level, not a price prediction.`;
   const dt = new Date(d.generated_at);
   document.getElementById("refresh-note").textContent =
     `Last scanned: ${dt.toLocaleString()} · ${d.candidates_scanned} stocks scanned · ` +
-    `${d.qualified_buy} buy-qualified, ${d.qualified_sell} sell-qualified`;
+    `${d.qualified_buy} buy-qualified` + (sellEnabled ? `, ${d.qualified_sell} sell-qualified` : "");
 
   const content = document.getElementById("content");
 
-  if (d.buy_picks.length === 0 && d.sell_picks.length === 0) {
+  if (d.buy_picks.length === 0 && (!sellEnabled || d.sell_picks.length === 0)) {
     content.innerHTML = `<div class="empty-state">
-      No stocks cleared every filter this run (breakout/breakdown + VWAP + RVOL ≥ ${d.filters.min_rvol}x + tight stop).
+      No stocks cleared every filter this run (breakout + VWAP + trend + ADX + RVOL ≥ ${d.filters.min_rvol}x + tight stop).
       That's the scanner doing its job — it's built to stay quiet rather than force a pick. Try again in 15-20 minutes,
       or check back tomorrow morning.
     </div>`;
@@ -233,11 +240,21 @@ async function load() {
     ? `<div class="cards">${renderCards(d.buy_picks, "buy")}</div>`
     : `<div class="empty-state">No buy setups cleared the filters this run.</div>`;
 
-  html += `<div class="section-title"><span class="dot sell"></span>Sell (short) — ${d.sell_picks.length} candidate${d.sell_picks.length === 1 ? "" : "s"}</div>`;
-  html += `<div class="section-note">Intraday short-sell setups — must be squared off same day in the cash segment.</div>`;
-  html += d.sell_picks.length
-    ? `<div class="cards">${renderCards(d.sell_picks, "sell")}</div>`
-    : `<div class="empty-state">No sell setups cleared the filters this run.</div>`;
+  html += `<div class="section-title"><span class="dot sell"></span>Sell (short)</div>`;
+  if (sellEnabled) {
+    html += `<div class="section-note">Intraday short-sell setups — must be squared off same day in the cash segment.</div>`;
+    html += d.sell_picks.length
+      ? `<div class="cards">${renderCards(d.sell_picks, "sell")}</div>`
+      : `<div class="empty-state">No sell setups cleared the filters this run.</div>`;
+  } else {
+    html += `<div class="empty-state">
+      <strong>Sell signals are currently disabled.</strong><br><br>
+      Backtesting found this opening-range strategy has no real edge on the short side for NSE F&O stocks over
+      the tested period — every filter combination tried came back with negative expectancy on sell setups,
+      while buy setups were consistently positive. Rather than show sell picks that would likely lose money on
+      average, they're switched off until the data says otherwise. See <a href="backtest.html" style="color:var(--accent);">backtest results</a> for the numbers.
+    </div>`;
+  }
 
   content.innerHTML = html;
 }

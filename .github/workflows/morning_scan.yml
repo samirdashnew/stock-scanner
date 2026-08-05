@@ -1,0 +1,41 @@
+name: Morning scan
+
+# Runs the opening-range scanner on a schedule, no laptop required, and
+# commits the refreshed JSON back to the repo. If GitHub Pages is enabled
+# for this repo (Settings -> Pages -> Deploy from branch -> main), the
+# published site picks up the new data automatically since morning.html
+# just fetches morning_picks.json at page-load time.
+#
+# Cron below is 04:12 UTC = 09:42 IST, Mon-Fri. GitHub Actions cron times
+# can drift a few minutes under load - that's normal, not a bug.
+on:
+  schedule:
+    - cron: "12 4 * * 1-5"
+  workflow_dispatch: {}  # lets you trigger a run manually from the Actions tab
+
+permissions:
+  contents: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install yfinance pandas
+
+      - name: Run morning scan
+        run: python morning_scan.py
+
+      - name: Commit updated results
+        run: |
+          git config user.name "morning-scan-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add morning_picks.json
+          git diff --staged --quiet || git commit -m "Auto: morning scan $(date -u +%Y-%m-%d)"
+          git push

@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Scanner Backtest Results</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1: #fcfcfb; --page: #f9f9f7; --text-primary: #0b0b0b;
+    --text-secondary: #52514e; --muted: #898781; --gridline: #e1e0d9;
+    --border: rgba(11,11,11,0.10); --good: #0ca30c; --bad: #d03b3b;
+    --chip-bg: #f0efec; --accent: #2a78d6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --surface-1: #1a1a19; --page: #0d0d0d; --text-primary: #ffffff;
+      --text-secondary: #c3c2b7; --muted: #898781; --gridline: #2c2c2a;
+      --border: rgba(255,255,255,0.10); --good: #0ca30c; --bad: #e66767;
+      --chip-bg: #232322; --accent: #3987e5;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-1: #1a1a19; --page: #0d0d0d; --text-primary: #ffffff;
+    --text-secondary: #c3c2b7; --muted: #898781; --gridline: #2c2c2a;
+    --border: rgba(255,255,255,0.10); --good: #0ca30c; --bad: #e66767;
+    --chip-bg: #232322; --accent: #3987e5;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--page); color:var(--text-primary); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; padding:24px 16px 60px; }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  nav.crumbs { font-size: 12px; margin-bottom: 14px; }
+  nav.crumbs a { color: var(--accent); text-decoration: none; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .subtitle { color: var(--text-secondary); font-size: 13px; }
+  .refresh-note { font-size: 12px; color: var(--muted); margin: 10px 0 20px; }
+  .banner { background: var(--chip-bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; font-size: 12.5px; color: var(--text-secondary); margin-bottom: 22px; line-height: 1.5; }
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 12px; margin-bottom: 28px; }
+  .stat-card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+  .stat-card h3 { margin: 0 0 10px; font-size: 13px; color: var(--text-secondary); }
+  .stat-card .big { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat-card .big.neg { color: var(--bad); }
+  .stat-card .big.pos { color: var(--good); }
+  .stat-card .row { display:flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-top: 6px; }
+  .stat-card .row span:last-child { font-variant-numeric: tabular-nums; color: var(--text-primary); }
+  table { width: 100%; border-collapse: collapse; background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; font-size: 12.5px; }
+  thead th { text-align: right; font-size: 10.5px; color: var(--muted); text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid var(--gridline); }
+  thead th:first-child, td:first-child, thead th:nth-child(2), td:nth-child(2) { text-align: left; }
+  tbody td { padding: 7px 10px; text-align: right; border-bottom: 1px solid var(--gridline); font-variant-numeric: tabular-nums; }
+  tbody tr:last-child td { border-bottom: none; }
+  .win { color: var(--good); font-weight: 600; }
+  .loss { color: var(--bad); font-weight: 600; }
+  .section-title { font-size: 14px; font-weight: 700; margin: 24px 0 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="crumbs"><a href="morning.html">&larr; Morning Picks</a> &nbsp;·&nbsp; <a href="index.html">Full scanner</a></nav>
+  <h1>Scanner Backtest</h1>
+  <div class="subtitle">Mechanical backtest of the exact opening-range/VWAP/RVOL rules the live scanner uses</div>
+  <div class="refresh-note" id="refresh-note"></div>
+
+  <div class="banner">
+    Every qualifying setup in the window below became one simulated trade: stop-loss and 2:1 target checked bar-by-bar,
+    unresolved trades closed at end of day. This is a mechanical test of the <em>rule</em>, not a live track record —
+    real trading adds slippage, the free-data lag noted on Morning Picks, and your own judgment on which setups to actually take.
+    Past performance, simulated or real, does not predict future results.
+  </div>
+
+  <div class="stat-grid" id="stats"></div>
+
+  <div class="section-title">Recent trades</div>
+  <div style="overflow-x:auto;">
+    <table>
+      <thead><tr><th>Date</th><th>Symbol</th><th>Dir</th><th>Entry</th><th>Exit</th><th>P&amp;L%</th><th>Outcome</th></tr></thead>
+      <tbody id="trades-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+function statCard(title, s) {
+  const wr = s.win_rate_pct;
+  const cls = s.expectancy_pct > 0 ? "pos" : (s.expectancy_pct < 0 ? "neg" : "");
+  return `<div class="stat-card">
+    <h3>${title}</h3>
+    <div class="big">${wr}%</div>
+    <div class="row"><span>Trades</span><span>${s.trades}</span></div>
+    <div class="row"><span>Wins / Losses</span><span>${s.wins} / ${s.losses}</span></div>
+    <div class="row"><span>Avg win / loss</span><span>+${s.avg_win_pct}% / ${s.avg_loss_pct}%</span></div>
+    <div class="row"><span>Expectancy / trade</span><span class="${cls}">${s.expectancy_pct > 0 ? "+" : ""}${s.expectancy_pct}%</span></div>
+  </div>`;
+}
+
+async function load() {
+  const res = await fetch("backtest_results.json", { cache: "no-store" });
+  const d = await res.json();
+
+  document.getElementById("refresh-note").textContent =
+    `Window: ${d.period.from} to ${d.period.to} (${d.period.trading_days} trading days) · run ${new Date(d.generated_at).toLocaleString()}`;
+
+  document.getElementById("stats").innerHTML =
+    statCard("Overall", d.overall) + statCard("Buy", d.buy) + statCard("Sell", d.sell);
+
+  const recent = d.trades.slice(-40).reverse();
+  document.getElementById("trades-body").innerHTML = recent.map(t => `
+    <tr>
+      <td>${t.date}</td>
+      <td>${t.symbol}</td>
+      <td>${t.direction}</td>
+      <td>₹${t.entry}</td>
+      <td>₹${t.exit_price}</td>
+      <td class="${t.outcome}">${t.pnl_pct > 0 ? "+" : ""}${t.pnl_pct}%</td>
+      <td class="${t.outcome}">${t.outcome}</td>
+    </tr>
+  `).join("");
+}
+
+load().catch(err => {
+  document.getElementById("stats").innerHTML =
+    `<div class="stat-card">Could not load backtest_results.json — run backtest.py first.</div>`;
+  console.error(err);
+});
+</script>
+</body>
+</html>

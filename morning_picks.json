@@ -1,0 +1,92 @@
+{
+  "generated_at": "2026-08-05T14:04:26.432275+00:00",
+  "generated_at_ist": "2026-08-05T19:34:03.739878+05:30",
+  "universe_size": 200,
+  "candidates_scanned": 189,
+  "qualified_buy": 8,
+  "qualified_sell": 0,
+  "buy_picks": [
+    {
+      "symbol": "HDFCLIFE",
+      "entry": 544.5,
+      "vwap": 541.2,
+      "rvol_early": 5.08,
+      "gap_pct": 1.6,
+      "or_high": 539.65,
+      "or_low": 536.4,
+      "atr14": 11.31,
+      "avg_turnover_cr": 225.7,
+      "direction": "buy",
+      "stop_loss": 536.4,
+      "target": 560.7,
+      "risk_pct": 1.49,
+      "score": 45.51,
+      "reward_multiple": 2.0
+    },
+    {
+      "symbol": "CANBK",
+      "entry": 129.66,
+      "vwap": 129.56,
+      "rvol_early": 2.46,
+      "gap_pct": 1.3,
+      "or_high": 129.55,
+      "or_low": 128.41,
+      "atr14": 2.67,
+      "avg_turnover_cr": 316.2,
+      "direction": "buy",
+      "stop_loss": 128.41,
+      "target": 132.16,
+      "risk_pct": 0.96,
+      "score": 25.69,
+      "reward_multiple": 2.0
+    },
+    {
+      "symbol": "NTPC",
+      "entry": 346.75,
+      "vwap": 346.12,
+      "rvol_early": 2.64,
+      "gap_pct": 0.9,
+      "or_high": 346.7,
+      "or_low": 342.85,
+      "atr14": 5.61,
+      "avg_turnover_cr": 333.6,
+      "direction": "buy",
+      "stop_loss": 342.85,
+      "target": 354.55,
+      "risk_pct": 1.12,
+      "score": 25.31,
+      "reward_multiple": 2.0
+    },
+    {
+      "symbol": "OBEROIRLTY",
+      "entry": 1811.8,
+      "vwap": 1808.22,
+      "rvol_early": 2.03,
+      "gap_pct": 1.86,
+      "or_high": 1810.0,
+      "or_low": 1785.6,
+      "atr14": 43.37,
+      "avg_turnover_cr": 77.0,
+      "direction": "buy",
+      "stop_loss": 1785.6,
+      "target": 1864.2,
+      "risk_pct": 1.45,
+      "score": 22.04,
+      "reward_multiple": 2.0
+    }
+  ],
+  "sell_picks": [],
+  "filters": {
+    "min_rvol": 1.5,
+    "gap_pct_range": [
+      0.3,
+      6.0
+    ],
+    "risk_pct_range": [
+      0.15,
+      1.5
+    ],
+    "min_avg_turnover_cr": 20,
+    "reward_multiple": 2.0
+  }
+}

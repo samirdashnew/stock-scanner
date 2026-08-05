@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Morning Picks — Opening Range Scanner</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --page:           #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --muted:          #898781;
+    --gridline:       #e1e0d9;
+    --border:         rgba(11,11,11,0.10);
+    --good:           #0ca30c;
+    --good-bg:        #e6f4e6;
+    --bad:            #d03b3b;
+    --bad-bg:         #fbeaea;
+    --chip-bg:        #f0efec;
+    --accent:         #2a78d6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --surface-1:      #1a1a19;
+      --page:           #0d0d0d;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --muted:          #898781;
+      --gridline:       #2c2c2a;
+      --border:         rgba(255,255,255,0.10);
+      --good:           #0ca30c;
+      --good-bg:        #10280f;
+      --bad:            #e66767;
+      --bad-bg:         #2c1414;
+      --chip-bg:        #232322;
+      --accent:         #3987e5;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-1:      #1a1a19;
+    --page:           #0d0d0d;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --muted:          #898781;
+    --gridline:       #2c2c2a;
+    --border:         rgba(255,255,255,0.10);
+    --good:           #0ca30c;
+    --good-bg:        #10280f;
+    --bad:            #e66767;
+    --bad-bg:         #2c1414;
+    --chip-bg:        #232322;
+    --accent:         #3987e5;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    padding: 24px 16px 60px;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; }
+
+  header { margin-bottom: 8px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .subtitle { color: var(--text-secondary); font-size: 13px; }
+  .refresh-note { font-size: 12px; color: var(--muted); margin: 10px 0 22px; }
+  nav.crumbs { font-size: 12px; margin-bottom: 14px; }
+  nav.crumbs a { color: var(--accent); text-decoration: none; }
+
+  .warning-banner {
+    background: var(--chip-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+
+  .empty-state {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-secondary);
+  }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; }
+
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px;
+  }
+  .card-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px; }
+  .rank { font-size: 11px; color: var(--muted); font-weight: 600; }
+  .symbol { font-size: 20px; font-weight: 700; }
+  .gap-badge {
+    font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums;
+    color: var(--good);
+  }
+  .entry-price { font-size: 13px; color: var(--text-secondary); margin-bottom: 14px; font-variant-numeric: tabular-nums; }
+
+  .levels { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .level-box { background: var(--chip-bg); border-radius: 8px; padding: 8px 10px; }
+  .level-box .lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+  .level-box .val { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .level-box.stop .val { color: var(--bad); }
+  .level-box.target .val { color: var(--good); }
+
+  .meta-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+  .meta-row .k { color: var(--muted); }
+  .meta-row .v { font-variant-numeric: tabular-nums; font-weight: 500; color: var(--text-primary); }
+
+  .chips { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+  .chip {
+    font-size: 10.5px; padding: 3px 8px; border-radius: 999px;
+    background: var(--good-bg); color: var(--good); font-weight: 600;
+  }
+  .card.sell .chip { background: var(--bad-bg); color: var(--bad); }
+  .card.sell .gap-badge { color: var(--bad); }
+  .card.sell .level-box.stop .val { color: var(--bad); }
+  .card.sell .level-box.target .val { color: var(--good); }
+
+  .section-title {
+    font-size: 14px; font-weight: 700; margin: 26px 0 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-title:first-child { margin-top: 0; }
+  .section-title .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .section-title .dot.buy { background: var(--good); }
+  .section-title .dot.sell { background: var(--bad); }
+  .section-note { font-size: 12px; color: var(--muted); margin: -4px 0 12px; }
+
+  .legend {
+    margin-top: 26px; font-size: 12px; color: var(--muted); line-height: 1.6;
+  }
+  .legend code { background: var(--chip-bg); padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="crumbs"><a href="index.html">&larr; Full scanner (all gainers/losers)</a> &nbsp;·&nbsp; <a href="backtest.html">Backtest results</a></nav>
+  <header>
+    <h1>Morning Picks</h1>
+    <div class="subtitle">Opening-range breakout + volume + VWAP shortlist — run once after 9:30 AM IST</div>
+  </header>
+  <div class="refresh-note" id="refresh-note"></div>
+
+  <div class="warning-banner">
+    <strong>Before you act on this:</strong> free data can lag 15-20 minutes — check the live price on your broker terminal before entering. This is a screening shortlist, not a signal that guarantees a profitable trade; position size and manage risk accordingly. Stop-loss levels shown are structural (opening-range level), not a recommendation on how much capital to risk.
+    <strong>SELL picks are intraday short-sell setups</strong> — in the NSE cash segment these must be squared off the same day (no overnight short without F&O); confirm your broker/segment supports intraday short-selling before acting on one.
+  </div>
+
+  <div id="content"></div>
+
+  <div class="legend">
+    <div><code>RVOL (early)</code> = volume so far today, scaled to a full trading day, vs the 20-day average — the volume-conviction signal.</div>
+    <div><code>Target</code> = entry &plusmn; 2 &times; (entry − stop), a 2:1 reward:risk level, not a price prediction.</div>
+    <div>BUY: broke above the first-15-min high, trading above VWAP, early RVOL ≥ 1.5x, stop within ~1.5% of entry. SELL: mirror image — broke below the first-15-min low, trading below VWAP, same volume/stop conditions.</div>
+  </div>
+</div>
+
+<script>
+function renderCards(picks, direction) {
+  return picks.map((p, i) => `
+    <div class="card ${direction}">
+      <div class="card-top">
+        <span class="symbol">${p.symbol}</span>
+        <span class="gap-badge">${p.gap_pct >= 0 ? "+" : ""}${p.gap_pct.toFixed(2)}%</span>
+      </div>
+      <div class="entry-price">Entry / CMP: ₹${p.entry.toFixed(2)} <span style="color:var(--muted)">· #${i + 1} of ${picks.length}</span></div>
+      <div class="levels">
+        <div class="level-box stop">
+          <div class="lbl">Stop-loss</div>
+          <div class="val">₹${p.stop_loss.toFixed(2)}</div>
+        </div>
+        <div class="level-box target">
+          <div class="lbl">Target (2R)</div>
+          <div class="val">₹${p.target.toFixed(2)}</div>
+        </div>
+        <div class="level-box">
+          <div class="lbl">Risk</div>
+          <div class="val">${p.risk_pct.toFixed(2)}%</div>
+        </div>
+      </div>
+      <div class="meta-row"><span class="k">Early RVOL</span><span class="v">${p.rvol_early.toFixed(2)}x</span></div>
+      <div class="meta-row"><span class="k">VWAP</span><span class="v">₹${p.vwap.toFixed(2)}</span></div>
+      <div class="meta-row"><span class="k">Opening range</span><span class="v">₹${p.or_low.toFixed(2)} – ₹${p.or_high.toFixed(2)}</span></div>
+      <div class="meta-row"><span class="k">ATR (14d)</span><span class="v">₹${p.atr14.toFixed(2)}</span></div>
+      <div class="meta-row"><span class="k">Avg turnover</span><span class="v">₹${p.avg_turnover_cr.toFixed(0)}Cr</span></div>
+      <div class="chips">
+        <span class="chip">${direction === "buy" ? "OR Breakout" : "OR Breakdown"}</span>
+        <span class="chip">${direction === "buy" ? "Above VWAP" : "Below VWAP"}</span>
+        <span class="chip">Vol Surge</span>
+      </div>
+    </div>
+  `).join("");
+}
+
+async function load() {
+  const res = await fetch("morning_picks.json", { cache: "no-store" });
+  const d = await res.json();
+
+  const dt = new Date(d.generated_at);
+  document.getElementById("refresh-note").textContent =
+    `Last scanned: ${dt.toLocaleString()} · ${d.candidates_scanned} stocks scanned · ` +
+    `${d.qualified_buy} buy-qualified, ${d.qualified_sell} sell-qualified`;
+
+  const content = document.getElementById("content");
+
+  if (d.buy_picks.length === 0 && d.sell_picks.length === 0) {
+    content.innerHTML = `<div class="empty-state">
+      No stocks cleared every filter this run (breakout/breakdown + VWAP + RVOL ≥ ${d.filters.min_rvol}x + tight stop).
+      That's the scanner doing its job — it's built to stay quiet rather than force a pick. Try again in 15-20 minutes,
+      or check back tomorrow morning.
+    </div>`;
+    return;
+  }
+
+  let html = "";
+  html += `<div class="section-title"><span class="dot buy"></span>Buy — ${d.buy_picks.length} candidate${d.buy_picks.length === 1 ? "" : "s"}</div>`;
+  html += d.buy_picks.length
+    ? `<div class="cards">${renderCards(d.buy_picks, "buy")}</div>`
+    : `<div class="empty-state">No buy setups cleared the filters this run.</div>`;
+
+  html += `<div class="section-title"><span class="dot sell"></span>Sell (short) — ${d.sell_picks.length} candidate${d.sell_picks.length === 1 ? "" : "s"}</div>`;
+  html += `<div class="section-note">Intraday short-sell setups — must be squared off same day in the cash segment.</div>`;
+  html += d.sell_picks.length
+    ? `<div class="cards">${renderCards(d.sell_picks, "sell")}</div>`
+    : `<div class="empty-state">No sell setups cleared the filters this run.</div>`;
+
+  content.innerHTML = html;
+}
+
+load().catch(err => {
+  document.getElementById("content").innerHTML =
+    `<div class="empty-state">Could not load morning_picks.json — run morning_scan.py first, and serve this folder over HTTP (not file://).</div>`;
+  console.error(err);
+});
+</script>
+</body>
+</html>

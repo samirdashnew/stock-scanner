@@ -20,7 +20,10 @@ MIN_GAP_PCT = 0.3
 MAX_GAP_PCT = 6.0
 MAX_RISK_PCT = 1.5
 MIN_RISK_PCT = 0.15
-REWARD_MULTIPLE = 3.0           # tuned via tune.py: 3R outperformed 2R on the buy side
+REWARD_MULTIPLE = 2.5           # tuned via tune_target.py: same expectancy as 3R (+0.22%/trade)
+                                 # but the target is actually reached ~3x more often (21% vs 7% of
+                                 # wins) - 3R looked identical on expectancy but was mostly
+                                 # theoretical, see README "Is the target realistic?"
 
 # --- Trend/strength filters (daily timeframe, computed strictly on prior
 # days - see prior_day_stats). Tuned via backtest.py / tune.py, not guessed.

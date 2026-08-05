@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-05T15:51:12.491904+00:00",
-  "generated_at_ist": "2026-08-05T21:20:51.461723+05:30",
+  "generated_at": "2026-08-05T16:20:14.927307+00:00",
+  "generated_at_ist": "2026-08-05T21:49:49.740584+05:30",
   "universe_size": 200,
   "candidates_scanned": 189,
   "qualified_buy": 1,
@@ -23,10 +23,10 @@
       "adx14": 32.13,
       "direction": "buy",
       "stop_loss": 14028.0,
-      "target": 14820.0,
+      "target": 14721.0,
       "risk_pct": 1.39,
       "score": 35.58,
-      "reward_multiple": 3.0
+      "reward_multiple": 2.5
     }
   ],
   "sell_picks": [],
@@ -41,7 +41,7 @@
       1.5
     ],
     "min_avg_turnover_cr": 20,
-    "reward_multiple": 3.0,
+    "reward_multiple": 2.5,
     "min_adx": 20,
     "sell_enabled": false
   }

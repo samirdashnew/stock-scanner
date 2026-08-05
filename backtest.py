@@ -122,13 +122,19 @@ def backtest_symbol(symbol: str, daily_df: pd.DataFrame, intraday_df: pd.DataFra
 def summarize(trades: list[dict]) -> dict:
     if not trades:
         return {"trades": 0, "wins": 0, "losses": 0, "win_rate_pct": 0,
-                "avg_win_pct": 0, "avg_loss_pct": 0, "expectancy_pct": 0}
+                "avg_win_pct": 0, "avg_loss_pct": 0, "expectancy_pct": 0,
+                "target_hit_rate_pct": 0}
     wins = [t for t in trades if t["outcome"] == "win"]
     losses = [t for t in trades if t["outcome"] == "loss"]
     avg_win = sum(t["pnl_pct"] for t in wins) / len(wins) if wins else 0
     avg_loss = sum(t["pnl_pct"] for t in losses) / len(losses) if losses else 0
     win_rate = len(wins) / len(trades) * 100
     expectancy = sum(t["pnl_pct"] for t in trades) / len(trades)
+    # Of the wins, how many actually reached the stated target price intraday,
+    # vs just closed positive at end of day without getting there. This is the
+    # "is the displayed target realistic" check - see README.
+    true_target_hits = [t for t in wins if abs(t["exit_price"] - t["target"]) < 0.01]
+    target_hit_rate = len(true_target_hits) / len(wins) * 100 if wins else 0
     return {
         "trades": len(trades),
         "wins": len(wins),
@@ -137,6 +143,7 @@ def summarize(trades: list[dict]) -> dict:
         "avg_win_pct": round(avg_win, 2),
         "avg_loss_pct": round(avg_loss, 2),
         "expectancy_pct": round(expectancy, 2),
+        "target_hit_rate_pct": round(target_hit_rate, 1),
     }
 
 

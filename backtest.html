@@ -70,6 +70,14 @@
     counts below) — treat these numbers as directional, not final, and re-run periodically as more data accumulates.
   </div>
 
+  <div class="banner">
+    <strong>Is the displayed target realistic?</strong> Not usually, and that's worth being clear about: most winning
+    trades close positive by end of day well short of the stated target — see "Wins that hit the actual target" below.
+    Treat the target as a stretch level to trim into, not an expected exit. The win/loss classification (and the
+    expectancy number) already account for this correctly either way — it's the specific target <em>price</em> that's
+    rarely the real exit.
+  </div>
+
   <div class="stat-grid" id="stats"></div>
 
   <div class="section-title">Recent trades</div>
@@ -92,6 +100,7 @@ function statCard(title, s) {
     <div class="row"><span>Wins / Losses</span><span>${s.wins} / ${s.losses}</span></div>
     <div class="row"><span>Avg win / loss</span><span>+${s.avg_win_pct}% / ${s.avg_loss_pct}%</span></div>
     <div class="row"><span>Expectancy / trade</span><span class="${cls}">${s.expectancy_pct > 0 ? "+" : ""}${s.expectancy_pct}%</span></div>
+    <div class="row"><span>Wins that hit the actual target</span><span>${s.target_hit_rate_pct}%</span></div>
   </div>`;
 }
 

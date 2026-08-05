@@ -217,7 +217,10 @@ async function load() {
 
   const sellEnabled = d.filters.sell_enabled;
   document.getElementById("target-legend").innerHTML =
-    `<code>Target</code> = entry &plusmn; ${d.filters.reward_multiple} &times; (entry − stop), a ${d.filters.reward_multiple}:1 reward:risk level, not a price prediction.`;
+    `<code>Target</code> = entry &plusmn; ${d.filters.reward_multiple} &times; (entry − stop), a ${d.filters.reward_multiple}:1 reward:risk level. ` +
+    `<strong>In backtesting, only about 1 in 5 winning trades actually reached this exact price</strong> — most winners ` +
+    `close positive by end of day well before getting there. Treat it as a stretch level to trim into, not an expected exit. ` +
+    `See <a href="backtest.html" style="color:var(--accent);">backtest results</a> for the real numbers.`;
   const dt = new Date(d.generated_at);
   document.getElementById("refresh-note").textContent =
     `Last scanned: ${dt.toLocaleString()} · ${d.candidates_scanned} stocks scanned · ` +

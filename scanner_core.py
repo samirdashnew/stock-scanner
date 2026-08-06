@@ -78,58 +78,63 @@ def _adx(high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14) ->
     return adx.fillna(0)
 
 
-def _bollinger(close: pd.Series, period: int = 20, num_std: float = 2.0):
-    mid = close.rolling(period).mean()
-    std = close.rolling(period).std()
-    upper = mid + num_std * std
-    lower = mid - num_std * std
-    return upper, mid, lower
+def compute_daily_indicators(daily_df: pd.DataFrame) -> pd.DataFrame:
+    """Computes every daily-timeframe indicator (EMA9/15/50, RSI14, ADX14,
+    ATR14, 20d avg volume/turnover) as rolling series ONCE over the full
+    history - each row's values use data up to and including that row.
+
+    Call this once per symbol, not once per day - a caller that needs "as of
+    the close before day X" should look up `.shift(1)` (see prior_day_stats),
+    not recompute the indicators on a truncated slice. Recomputing per day
+    was the original approach and made backtest.py/tune.py far slower than
+    necessary for identical output.
+    """
+    df = daily_df.dropna(subset=["Close", "Volume"]).copy()
+    high, low, close, volume = df["High"], df["Low"], df["Close"], df["Volume"]
+
+    df["ema9"] = _ema(close, 9)
+    df["ema15"] = _ema(close, 15)
+    df["ema50"] = _ema(close, 50)
+    df["rsi14"] = _rsi(close, 14)
+    df["adx14"] = _adx(high, low, close, 14)
+
+    prev_c = close.shift(1)
+    tr = pd.concat([high - low, (high - prev_c).abs(), (low - prev_c).abs()], axis=1).max(axis=1)
+    df["atr14"] = tr.rolling(14).mean()
+    df["avg_volume_20d"] = volume.rolling(20).mean()
+    df["avg_turnover_cr"] = (close * df["avg_volume_20d"]) / 1e7
+
+    return df
 
 
-def prior_day_stats(daily_df: pd.DataFrame, today) -> dict | None:
-    """20-day avg volume, prev close, ATR(14), and trend/strength indicators
-    (EMA 9/15/50, RSI14, ADX14, Bollinger 20,2) - all computed strictly
-    before `today`, so this never leaks same-day information."""
-    daily_df = daily_df.dropna(subset=["Close", "Volume"])
-    prior = daily_df[daily_df.index.date < today]
+def prior_day_stats(indicators_df: pd.DataFrame, today) -> dict | None:
+    """Cheap lookup of the most recent row strictly before `today` from an
+    already-computed indicators_df (see compute_daily_indicators). Never
+    leaks same-day information since it only ever reads the last prior row."""
+    prior = indicators_df[indicators_df.index.date < today]
     if len(prior) < 55:  # need enough history for a stable EMA50/ADX14
         return None
 
-    prev_close = float(prior["Close"].iloc[-1])
-    avg_volume_20d = float(prior["Volume"].iloc[-20:].mean())
-    if avg_volume_20d <= 0 or prev_close < MIN_PRICE:
+    row = prior.iloc[-1]
+    prev_close = float(row["Close"])
+    avg_volume_20d = float(row["avg_volume_20d"])
+    if pd.isna(avg_volume_20d) or avg_volume_20d <= 0 or prev_close < MIN_PRICE:
         return None
 
-    avg_turnover_cr = (prev_close * avg_volume_20d) / 1e7
+    avg_turnover_cr = float(row["avg_turnover_cr"])
     if avg_turnover_cr < MIN_AVG_TURNOVER_CR:
         return None
-
-    high, low, close = prior["High"], prior["Low"], prior["Close"]
-    prev_c = close.shift(1)
-    tr = pd.concat([high - low, (high - prev_c).abs(), (low - prev_c).abs()], axis=1).max(axis=1)
-    atr14 = float(tr.iloc[-14:].mean())
-
-    ema9 = float(_ema(close, 9).iloc[-1])
-    ema15 = float(_ema(close, 15).iloc[-1])
-    ema50 = float(_ema(close, 50).iloc[-1])
-    rsi14 = float(_rsi(close, 14).iloc[-1])
-    adx14 = float(_adx(high, low, close, 14).iloc[-1])
-    bb_upper, bb_mid, bb_lower = _bollinger(close, 20, 2.0)
-    bb_upper, bb_mid, bb_lower = float(bb_upper.iloc[-1]), float(bb_mid.iloc[-1]), float(bb_lower.iloc[-1])
 
     return {
         "prev_close": prev_close,
         "avg_volume_20d": avg_volume_20d,
         "avg_turnover_cr": avg_turnover_cr,
-        "atr14": atr14,
-        "ema9": ema9,
-        "ema15": ema15,
-        "ema50": ema50,
-        "rsi14": rsi14,
-        "adx14": adx14,
-        "bb_upper": bb_upper,
-        "bb_mid": bb_mid,
-        "bb_lower": bb_lower,
+        "atr14": float(row["atr14"]),
+        "ema9": float(row["ema9"]),
+        "ema15": float(row["ema15"]),
+        "ema50": float(row["ema50"]),
+        "rsi14": float(row["rsi14"]),
+        "adx14": float(row["adx14"]),
     }
 
 

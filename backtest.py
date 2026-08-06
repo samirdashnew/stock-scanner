@@ -74,10 +74,14 @@ def simulate_trade(direction: str, entry: float, stop: float, target: float,
 
 def backtest_symbol(symbol: str, daily_df: pd.DataFrame, intraday_df: pd.DataFrame) -> list[dict]:
     trades = []
-    daily_df = daily_df.dropna(subset=["Close", "Volume"])
     intraday_df = intraday_df.dropna(subset=["Close"])
     if intraday_df.empty:
         return trades
+
+    # Computed ONCE per symbol here, then cheaply looked up per day below -
+    # this is the expensive step (EMA/RSI/ADX over the full history), so it
+    # must not run inside the day loop. See scanner_core.compute_daily_indicators.
+    indicators = core.compute_daily_indicators(daily_df)
 
     trading_days = sorted(set(intraday_df.index.date))
     for day in trading_days:
@@ -85,7 +89,7 @@ def backtest_symbol(symbol: str, daily_df: pd.DataFrame, intraday_df: pd.DataFra
         if len(today_bars) <= DECISION_BARS:
             continue  # no future bars to simulate, or half-day session
 
-        stats = core.prior_day_stats(daily_df, day)
+        stats = core.prior_day_stats(indicators, day)
         if stats is None:
             continue
 

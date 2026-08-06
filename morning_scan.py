@@ -103,7 +103,8 @@ def main():
             if len(today_bars) < 6:
                 continue  # need at least 30 min of bars for a decision point
 
-            stats = core.prior_day_stats(ddf.dropna(subset=["Close", "Volume"]), today)
+            indicators = core.compute_daily_indicators(ddf)
+            stats = core.prior_day_stats(indicators, today)
             if stats is None:
                 continue
 

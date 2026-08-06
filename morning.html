@@ -121,7 +121,10 @@
   .meta-row .k { color: var(--muted); }
   .meta-row .v { font-variant-numeric: tabular-nums; font-weight: 500; color: var(--text-primary); }
 
-  .chips { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+  .rvol-line { font-size: 12px; color: var(--text-secondary); margin-bottom: 2px; }
+  .rvol-line b { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+
+  .chips { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
   .chip {
     font-size: 10.5px; padding: 3px 8px; border-radius: 999px;
     background: var(--good-bg); color: var(--good); font-weight: 600;
@@ -130,6 +133,19 @@
   .card.sell .gap-badge { color: var(--bad); }
   .card.sell .level-box.stop .val { color: var(--bad); }
   .card.sell .level-box.target .val { color: var(--good); }
+
+  .details-toggle {
+    margin-top: 10px;
+  }
+  .details-toggle summary {
+    font-size: 11.5px; color: var(--accent); cursor: pointer;
+    list-style: none; user-select: none;
+  }
+  .details-toggle summary::-webkit-details-marker { display: none; }
+  .details-toggle summary::before { content: "Details ▾ "; }
+  .details-toggle[open] summary::before { content: "Details ▴ "; }
+  .details-toggle .meta-row { margin-top: 8px; }
+  .details-toggle .meta-row:first-of-type { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--gridline); }
 
   .section-title {
     font-size: 14px; font-weight: 700; margin: 26px 0 10px;
@@ -157,17 +173,20 @@
   <div class="refresh-note" id="refresh-note"></div>
 
   <div class="warning-banner">
-    <strong>Before you act on this:</strong> free data can lag 15-20 minutes — check the live price on your broker terminal before entering. This is a screening shortlist, not a signal that guarantees a profitable trade; position size and manage risk accordingly. Stop-loss levels shown are structural (opening-range level), not a recommendation on how much capital to risk.
-    <strong>SELL picks are intraday short-sell setups</strong> — in the NSE cash segment these must be squared off the same day (no overnight short without F&O); confirm your broker/segment supports intraday short-selling before acting on one.
+    <strong>Before you act:</strong> free data can lag 15-20 minutes — check the live price on your broker before entering. This is a screening shortlist, not a guarantee. <span id="target-legend-short"></span>
+    <strong>SELL picks are intraday short-sell setups</strong> and must be squared off the same day (no overnight short without F&O).
   </div>
 
   <div id="content"></div>
 
-  <div class="legend">
-    <div><code>RVOL (early)</code> = volume so far today, scaled to a full trading day, vs the 20-day average — the volume-conviction signal.</div>
-    <div id="target-legend"><code>Target</code> = entry &plusmn; reward-multiple &times; (entry − stop), not a price prediction.</div>
-    <div>BUY: broke above the first-15-min high, trading above VWAP, early RVOL ≥ 1.5x, stop within ~1.5% of entry, AND trading with the daily trend (previous close above EMA50) with a strong trend (daily ADX14 ≥ 20) and RSI not already exhausted. SELL: full mirror image on every condition.</div>
-  </div>
+  <details class="legend">
+    <summary style="cursor:pointer;color:var(--accent);font-size:12px;">How does this scanner decide? ▾</summary>
+    <div style="margin-top:10px;">
+      <div><code>RVOL</code> = volume so far today, scaled to a full trading day, vs the 20-day average.</div>
+      <div><code>Target</code> = entry &plusmn; reward-multiple &times; (entry − stop) — a reward:risk level, not a price prediction.</div>
+      <div>BUY: broke above the first-15-min high, trading above VWAP, early RVOL ≥ 1.5x, stop within ~1.5% of entry, trading with the daily trend (above EMA50) with a strong trend (ADX14 ≥ 20) and RSI not already exhausted. SELL: full mirror image.</div>
+    </div>
+  </details>
 </div>
 
 <script>
@@ -193,20 +212,23 @@ function renderCards(picks, direction) {
           <div class="val">${p.risk_pct.toFixed(2)}%</div>
         </div>
       </div>
-      <div class="meta-row"><span class="k">Early RVOL</span><span class="v">${p.rvol_early.toFixed(2)}x</span></div>
-      <div class="meta-row"><span class="k">VWAP</span><span class="v">₹${p.vwap.toFixed(2)}</span></div>
-      <div class="meta-row"><span class="k">Opening range</span><span class="v">₹${p.or_low.toFixed(2)} – ₹${p.or_high.toFixed(2)}</span></div>
-      <div class="meta-row"><span class="k">ATR (14d)</span><span class="v">₹${p.atr14.toFixed(2)}</span></div>
-      <div class="meta-row"><span class="k">Avg turnover</span><span class="v">₹${p.avg_turnover_cr.toFixed(0)}Cr</span></div>
-      <div class="meta-row"><span class="k">Daily RSI(14) / ADX(14)</span><span class="v">${p.rsi14.toFixed(0)} / ${p.adx14.toFixed(0)}</span></div>
-      <div class="meta-row"><span class="k">EMA(9/15/50)</span><span class="v">₹${p.ema9.toFixed(1)}/${p.ema15.toFixed(1)}/${p.ema50.toFixed(1)}</span></div>
-      <div class="chips">
-        <span class="chip">${direction === "buy" ? "OR Breakout" : "OR Breakdown"}</span>
-        <span class="chip">${direction === "buy" ? "Above VWAP" : "Below VWAP"}</span>
-        <span class="chip">Vol Surge</span>
-        <span class="chip">${direction === "buy" ? "Uptrend (EMA50)" : "Downtrend (EMA50)"}</span>
-        <span class="chip">Trend Strength (ADX)</span>
-      </div>
+      <div class="rvol-line">Volume today: <b>${p.rvol_early.toFixed(1)}x</b> normal &middot; Liquidity: <b>₹${p.avg_turnover_cr.toFixed(0)}Cr</b>/day avg</div>
+
+      <details class="details-toggle">
+        <summary></summary>
+        <div class="meta-row"><span class="k">VWAP</span><span class="v">₹${p.vwap.toFixed(2)}</span></div>
+        <div class="meta-row"><span class="k">Opening range</span><span class="v">₹${p.or_low.toFixed(2)} – ₹${p.or_high.toFixed(2)}</span></div>
+        <div class="meta-row"><span class="k">ATR (14d)</span><span class="v">₹${p.atr14.toFixed(2)}</span></div>
+        <div class="meta-row"><span class="k">Daily RSI(14) / ADX(14)</span><span class="v">${p.rsi14.toFixed(0)} / ${p.adx14.toFixed(0)}</span></div>
+        <div class="meta-row"><span class="k">EMA(9/15/50)</span><span class="v">₹${p.ema9.toFixed(1)}/${p.ema15.toFixed(1)}/${p.ema50.toFixed(1)}</span></div>
+        <div class="chips">
+          <span class="chip">${direction === "buy" ? "OR Breakout" : "OR Breakdown"}</span>
+          <span class="chip">${direction === "buy" ? "Above VWAP" : "Below VWAP"}</span>
+          <span class="chip">Vol Surge</span>
+          <span class="chip">${direction === "buy" ? "Uptrend (EMA50)" : "Downtrend (EMA50)"}</span>
+          <span class="chip">Trend Strength (ADX)</span>
+        </div>
+      </details>
     </div>
   `).join("");
 }
@@ -216,11 +238,9 @@ async function load() {
   const d = await res.json();
 
   const sellEnabled = d.filters.sell_enabled;
-  document.getElementById("target-legend").innerHTML =
-    `<code>Target</code> = entry &plusmn; ${d.filters.reward_multiple} &times; (entry − stop), a ${d.filters.reward_multiple}:1 reward:risk level. ` +
-    `<strong>In backtesting, only about 1 in 5 winning trades actually reached this exact price</strong> — most winners ` +
-    `close positive by end of day well before getting there. Treat it as a stretch level to trim into, not an expected exit. ` +
-    `See <a href="backtest.html" style="color:var(--accent);">backtest results</a> for the real numbers.`;
+  document.getElementById("target-legend-short").innerHTML =
+    `Only ~1 in 5 winning trades actually hits the exact target — treat it as a stretch level, not an expected exit ` +
+    `(<a href="backtest.html" style="color:var(--accent);">why</a>).`;
   const dt = new Date(d.generated_at);
   document.getElementById("refresh-note").textContent =
     `Last scanned: ${dt.toLocaleString()} · ${d.candidates_scanned} stocks scanned · ` +

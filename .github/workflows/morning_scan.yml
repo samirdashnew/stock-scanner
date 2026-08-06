@@ -6,11 +6,15 @@ name: Morning scan
 # published site picks up the new data automatically since morning.html
 # just fetches morning_picks.json at page-load time.
 #
-# Cron below is 04:12 UTC = 09:42 IST, Mon-Fri. GitHub Actions cron times
-# can drift a few minutes under load - that's normal, not a bug.
+# Two cron slots: 04:12 UTC = 09:42 IST (primary) and 04:30 UTC = 10:00 IST
+# (backup). GitHub's free-tier scheduler can drift by minutes, sometimes
+# hours, under load - the backup slot exists so a market-morning run isn't
+# lost to that. Both runs are harmless if the primary was on time; the
+# backup just re-scans and commits fresh data again.
 on:
   schedule:
     - cron: "12 4 * * 1-5"
+    - cron: "30 4 * * 1-5"
   workflow_dispatch: {}  # lets you trigger a run manually from the Actions tab
 
 permissions:

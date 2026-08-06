@@ -62,27 +62,9 @@
   <div class="subtitle">Mechanical backtest of the exact opening-range/VWAP/RVOL rules the live scanner uses</div>
   <div class="refresh-note" id="refresh-note"></div>
 
-  <div class="banner" style="border-color:#c98a2a;">
-    <strong>Verdict: this rule set has not shown a profitable edge.</strong><br><br>
-    Across <b>267 candidate setups</b> (May–Aug 2026 — the full window free 5-minute data allows), the strategy
-    produced a <b>37.5% win rate with −0.17% expectancy per trade</b>. Three separate attempts to fix it all failed:
-    <br><br>
-    1. <b>More filters didn't help.</b> Per-check analysis showed the confluence signals barely separate winners from
-    losers. "Clear air to resistance" gave +0.3pts of lift, volume surge +0.7pts; RSI band, EMA stack, prior-day-high
-    and the consolidation-squeeze check all measured <em>negative</em>. Only ADX (+5.3) and market structure (+4.8)
-    were mildly positive — both within noise at this sample size.<br>
-    2. <b>Confluence count doesn't rank quality.</b> Setups passing 10 of 11 checks won 22% of the time; those passing
-    9 won 33%. There's no reliable ordering, which is why the picks page shows the checks as observations rather than
-    as a grade.<br>
-    3. <b>No exit fixed it.</b> Targets from 1R to 5R, breakeven stops and trailing stops were all tested on identical
-    entries. Every variant was negative; the best was −0.139%/trade.
-    <br><br>
-    An earlier version of this page reported 53.8% win rate / +0.22% expectancy. That was <b>26 trades</b> — roughly
-    ±10% standard error — almost certainly noise. The larger sample supersedes it, and the honest conclusion is that
-    this is a <em>screening tool</em>, not a signal service.
-    <br><br>
-    This is not proof the approach can never work: two months is a short window and possibly an unfavourable one for
-    breakouts. But it is unproven, and it should not be monetised or presented as profitable on these numbers.
+  <div class="banner">
+    <strong>For educational purposes only.</strong> These are historical backtest results of the scanner's rules,
+    shown for research and transparency. Not a buy/sell recommendation — please do your own research before trading.
   </div>
 
   <div class="stat-grid" id="stats"></div>

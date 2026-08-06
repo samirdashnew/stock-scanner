@@ -20,6 +20,9 @@
     --bad-bg:         #fbeaea;
     --chip-bg:        #f0efec;
     --accent:         #2a78d6;
+    --warn:           #8a5a00;
+    --warn-bg:        #fdf3e0;
+    --warn-border:    #e8c894;
   }
   @media (prefers-color-scheme: dark) {
     :root:where(:not([data-theme="light"])) {
@@ -37,6 +40,9 @@
       --bad-bg:         #2c1414;
       --chip-bg:        #232322;
       --accent:         #3987e5;
+      --warn:           #f0b95c;
+      --warn-bg:        #2b2113;
+      --warn-border:    #5c4520;
     }
   }
   :root[data-theme="dark"] {
@@ -54,6 +60,9 @@
     --bad-bg:         #2c1414;
     --chip-bg:        #232322;
     --accent:         #3987e5;
+    --warn:           #f0b95c;
+    --warn-bg:        #2b2113;
+    --warn-border:    #5c4520;
   }
 
   * { box-sizing: border-box; }
@@ -129,10 +138,27 @@
     font-size: 10.5px; padding: 3px 8px; border-radius: 999px;
     background: var(--good-bg); color: var(--good); font-weight: 600;
   }
-  .card.sell .chip { background: var(--bad-bg); color: var(--bad); }
-  .card.sell .gap-badge { color: var(--bad); }
-  .card.sell .level-box.stop .val { color: var(--bad); }
-  .card.sell .level-box.target .val { color: var(--good); }
+
+  /* Confluence grade: A = full confluence, C = cleared the safety gate only */
+  .grade {
+    font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px;
+    letter-spacing: .02em;
+  }
+  .grade.A { background: var(--good-bg); color: var(--good); }
+  .grade.B { background: var(--warn-bg); color: var(--warn); }
+  .grade.C { background: var(--chip-bg); color: var(--text-secondary); }
+  .grade-note {
+    font-size: 11.5px; margin: 8px 0 0; padding: 7px 9px; border-radius: 7px;
+    background: var(--warn-bg); color: var(--warn); line-height: 1.45;
+  }
+  .grade-note.C { background: var(--chip-bg); color: var(--text-secondary); }
+
+  .checklist { margin-top: 10px; }
+  .check { font-size: 11.5px; display: flex; gap: 6px; margin-bottom: 3px; line-height: 1.35; }
+  .check .mark { flex: none; font-weight: 700; }
+  .check.pass .mark { color: var(--good); }
+  .check.fail { color: var(--muted); }
+  .check.fail .mark { color: var(--muted); }
 
   .details-toggle {
     margin-top: 10px;
@@ -161,6 +187,20 @@
     margin-top: 26px; font-size: 12px; color: var(--muted); line-height: 1.6;
   }
   .legend code { background: var(--chip-bg); padding: 1px 5px; border-radius: 4px; }
+
+  /* The backtest verdict is the single most important thing on this page -
+     it must not read like boilerplate small print. */
+  .verdict-banner {
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--text-primary);
+    margin-bottom: 14px;
+  }
+  .verdict-banner a { color: var(--accent); font-weight: 600; }
 </style>
 </head>
 <body>
@@ -172,9 +212,22 @@
   </header>
   <div class="refresh-note" id="refresh-note"></div>
 
+  <div class="verdict-banner">
+    <strong>⚠ This strategy has not shown a profitable edge in testing.</strong>
+    Across 267 candidate setups (May–Aug 2026), this rule set produced a <b>37.5% win rate and negative expectancy
+    (−0.17% per trade)</b>. Adding trend, momentum and price-action filters did not fix it — the individual filters
+    barely discriminate between winners and losers — and no exit variant tested (1R–5R targets, breakeven stops,
+    trailing stops) turned it positive.
+    <br><br>
+    Treat everything below as a <b>watchlist of stocks showing volume and a breakout structure worth your own
+    analysis</b> — not as trade recommendations. An earlier version of this page reported a 53.8% win rate; that was
+    based on only 26 trades and did not hold up on a larger sample.
+    <a href="backtest.html">See the full numbers →</a>
+  </div>
+
   <div class="warning-banner">
-    <strong>Before you act:</strong> free data can lag 15-20 minutes — check the live price on your broker before entering. This is a screening shortlist, not a guarantee. <span id="target-legend-short"></span>
-    <strong>SELL picks are intraday short-sell setups</strong> and must be squared off the same day (no overnight short without F&O).
+    <strong>Also:</strong> free data can lag 15-20 minutes — check the live price on your broker before entering.
+    <span id="target-legend-short"></span>
   </div>
 
   <div id="content"></div>
@@ -190,101 +243,95 @@
 </div>
 
 <script>
-function renderCards(picks, direction) {
-  return picks.map((p, i) => `
-    <div class="card ${direction}">
+// Renders one candidate. Deliberately shows the confluence checks as
+// observations ("what's true about this stock") rather than as a graded
+// quality promise - per-check backtesting showed they do not reliably
+// separate winners from losers, so implying a quality tier would mislead.
+function renderCard(p, i, total) {
+  const checks = Object.entries(p.checks);
+  const checkHtml = checks.map(([name, ok]) =>
+    `<div class="check ${ok ? "pass" : "fail"}"><span class="mark">${ok ? "\u2713" : "\u00b7"}</span><span>${name}</span></div>`
+  ).join("");
+
+  const res = p.resistance ? `\u20b9${p.resistance.toFixed(2)}` : "none nearby";
+  const sup = p.support ? `\u20b9${p.support.toFixed(2)}` : "none nearby";
+
+  return `
+    <div class="card">
       <div class="card-top">
         <span class="symbol">${p.symbol}</span>
         <span class="gap-badge">${p.gap_pct >= 0 ? "+" : ""}${p.gap_pct.toFixed(2)}%</span>
       </div>
-      <div class="entry-price">Entry / CMP: ₹${p.entry.toFixed(2)} <span style="color:var(--muted)">· #${i + 1} of ${picks.length}</span></div>
+      <div class="entry-price">Entry / CMP: \u20b9${p.entry.toFixed(2)} <span style="color:var(--muted)">\u00b7 #${i + 1} of ${total}</span></div>
       <div class="levels">
         <div class="level-box stop">
           <div class="lbl">Stop-loss</div>
-          <div class="val">₹${p.stop_loss.toFixed(2)}</div>
+          <div class="val">\u20b9${p.stop_loss.toFixed(2)}</div>
         </div>
         <div class="level-box target">
           <div class="lbl">Target (${p.reward_multiple}R)</div>
-          <div class="val">₹${p.target.toFixed(2)}</div>
+          <div class="val">\u20b9${p.target.toFixed(2)}</div>
         </div>
         <div class="level-box">
           <div class="lbl">Risk</div>
           <div class="val">${p.risk_pct.toFixed(2)}%</div>
         </div>
       </div>
-      <div class="rvol-line">Volume today: <b>${p.rvol_early.toFixed(1)}x</b> normal &middot; Liquidity: <b>₹${p.avg_turnover_cr.toFixed(0)}Cr</b>/day avg</div>
+      <div class="rvol-line">Volume today: <b>${p.rvol_early.toFixed(1)}x</b> normal &middot; Liquidity: <b>\u20b9${p.avg_turnover_cr.toFixed(0)}Cr</b>/day avg</div>
+      <div class="rvol-line">Support <b>${sup}</b> &middot; Resistance <b>${res}</b> (${p.headroom_r >= 99 ? "clear air above" : p.headroom_r.toFixed(1) + "R away"})</div>
 
       <details class="details-toggle">
         <summary></summary>
-        <div class="meta-row"><span class="k">VWAP</span><span class="v">₹${p.vwap.toFixed(2)}</span></div>
-        <div class="meta-row"><span class="k">Opening range</span><span class="v">₹${p.or_low.toFixed(2)} – ₹${p.or_high.toFixed(2)}</span></div>
-        <div class="meta-row"><span class="k">ATR (14d)</span><span class="v">₹${p.atr14.toFixed(2)}</span></div>
-        <div class="meta-row"><span class="k">Daily RSI(14) / ADX(14)</span><span class="v">${p.rsi14.toFixed(0)} / ${p.adx14.toFixed(0)}</span></div>
-        <div class="meta-row"><span class="k">EMA(9/15/50)</span><span class="v">₹${p.ema9.toFixed(1)}/${p.ema15.toFixed(1)}/${p.ema50.toFixed(1)}</span></div>
-        <div class="chips">
-          <span class="chip">${direction === "buy" ? "OR Breakout" : "OR Breakdown"}</span>
-          <span class="chip">${direction === "buy" ? "Above VWAP" : "Below VWAP"}</span>
-          <span class="chip">Vol Surge</span>
-          <span class="chip">${direction === "buy" ? "Uptrend (EMA50)" : "Downtrend (EMA50)"}</span>
-          <span class="chip">Trend Strength (ADX)</span>
+        <div class="checklist">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">
+            ${p.checks_passed} of ${p.checks_total} confluence signals present
+            &mdash; observations, not a quality score
+          </div>
+          ${checkHtml}
         </div>
+        <div class="meta-row"><span class="k">VWAP</span><span class="v">\u20b9${p.vwap.toFixed(2)}</span></div>
+        <div class="meta-row"><span class="k">Opening range</span><span class="v">\u20b9${p.or_low.toFixed(2)} \u2013 \u20b9${p.or_high.toFixed(2)}</span></div>
+        <div class="meta-row"><span class="k">Prior day H / L</span><span class="v">\u20b9${p.pdh.toFixed(2)} / \u20b9${p.pdl.toFixed(2)}</span></div>
+        <div class="meta-row"><span class="k">ATR (14d)</span><span class="v">\u20b9${p.atr14.toFixed(2)}</span></div>
+        <div class="meta-row"><span class="k">Daily RSI(14) / ADX(14)</span><span class="v">${p.rsi14.toFixed(0)} / ${p.adx14.toFixed(0)}</span></div>
+        <div class="meta-row"><span class="k">EMA(9/15/50)</span><span class="v">\u20b9${p.ema9.toFixed(1)}/${p.ema15.toFixed(1)}/${p.ema50.toFixed(1)}</span></div>
+        <div class="meta-row"><span class="k">Base tightness (0=coiled)</span><span class="v">${p.squeeze_pctile.toFixed(0)}</span></div>
       </details>
     </div>
-  `).join("");
+  `;
 }
 
 async function load() {
   const res = await fetch("morning_picks.json", { cache: "no-store" });
   const d = await res.json();
 
-  const sellEnabled = d.filters.sell_enabled;
   document.getElementById("target-legend-short").innerHTML =
-    `Only ~1 in 5 winning trades actually hits the exact target — treat it as a stretch level, not an expected exit ` +
-    `(<a href="backtest.html" style="color:var(--accent);">why</a>).`;
+    `Only ~1 in 5 winning trades ever reaches the exact target \u2014 treat it as a stretch level, not an expected exit.`;
+
   const dt = new Date(d.generated_at);
   document.getElementById("refresh-note").textContent =
-    `Last scanned: ${dt.toLocaleString()} · ${d.candidates_scanned} stocks scanned · ` +
-    `${d.qualified_buy} buy-qualified` + (sellEnabled ? `, ${d.qualified_sell} sell-qualified` : "");
+    `Last scanned: ${dt.toLocaleString()} \u00b7 ${d.candidates_scanned} stocks scanned \u00b7 ` +
+    `${d.candidates_passing_gate} passed the entry gate \u00b7 showing top ${d.picks.length}`;
 
   const content = document.getElementById("content");
 
-  if (d.buy_picks.length === 0 && (!sellEnabled || d.sell_picks.length === 0)) {
+  if (!d.picks.length) {
     content.innerHTML = `<div class="empty-state">
-      No stocks cleared every filter this run (breakout + VWAP + trend + ADX + RVOL ≥ ${d.filters.min_rvol}x + tight stop).
-      That's the scanner doing its job — it's built to stay quiet rather than force a pick. Try again in 15-20 minutes,
-      or check back tomorrow morning.
+      No stocks cleared the entry gate this run (opening-range breakout + above VWAP + real volume + a tight
+      structural stop). Nothing is being forced onto the list to fill space \u2014 check back in 15-20 minutes,
+      or tomorrow morning.
     </div>`;
     return;
   }
 
-  let html = "";
-  html += `<div class="section-title"><span class="dot buy"></span>Buy — ${d.buy_picks.length} candidate${d.buy_picks.length === 1 ? "" : "s"}</div>`;
-  html += d.buy_picks.length
-    ? `<div class="cards">${renderCards(d.buy_picks, "buy")}</div>`
-    : `<div class="empty-state">No buy setups cleared the filters this run.</div>`;
-
-  html += `<div class="section-title"><span class="dot sell"></span>Sell (short)</div>`;
-  if (sellEnabled) {
-    html += `<div class="section-note">Intraday short-sell setups — must be squared off same day in the cash segment.</div>`;
-    html += d.sell_picks.length
-      ? `<div class="cards">${renderCards(d.sell_picks, "sell")}</div>`
-      : `<div class="empty-state">No sell setups cleared the filters this run.</div>`;
-  } else {
-    html += `<div class="empty-state">
-      <strong>Sell signals are currently disabled.</strong><br><br>
-      Backtesting found this opening-range strategy has no real edge on the short side for NSE F&O stocks over
-      the tested period — every filter combination tried came back with negative expectancy on sell setups,
-      while buy setups were consistently positive. Rather than show sell picks that would likely lose money on
-      average, they're switched off until the data says otherwise. See <a href="backtest.html" style="color:var(--accent);">backtest results</a> for the numbers.
-    </div>`;
-  }
-
-  content.innerHTML = html;
+  content.innerHTML =
+    `<div class="section-title"><span class="dot buy"></span>Watchlist \u2014 ${d.picks.length} stock${d.picks.length === 1 ? "" : "s"} worth a look</div>` +
+    `<div class="cards">${d.picks.map((p, i) => renderCard(p, i, d.picks.length)).join("")}</div>`;
 }
 
 load().catch(err => {
   document.getElementById("content").innerHTML =
-    `<div class="empty-state">Could not load morning_picks.json — run morning_scan.py first, and serve this folder over HTTP (not file://).</div>`;
+    `<div class="empty-state">Could not load morning_picks.json \u2014 run morning_scan.py first, and serve this folder over HTTP (not file://).</div>`;
   console.error(err);
 });
 </script>

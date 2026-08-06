@@ -62,20 +62,27 @@
   <div class="subtitle">Mechanical backtest of the exact opening-range/VWAP/RVOL rules the live scanner uses</div>
   <div class="refresh-note" id="refresh-note"></div>
 
-  <div class="banner" id="method-banner">
-    Every qualifying setup in the window below became one simulated trade: stop-loss and target checked bar-by-bar,
-    unresolved trades closed at end of day. This is a mechanical test of the <em>rule</em>, not a live track record —
-    real trading adds slippage, the free-data lag noted on Morning Picks, and your own judgment on which setups to actually take.
-    Past performance, simulated or real, does not predict future results. Sample sizes here are still small (see trade
-    counts below) — treat these numbers as directional, not final, and re-run periodically as more data accumulates.
-  </div>
-
-  <div class="banner">
-    <strong>Is the displayed target realistic?</strong> Not usually, and that's worth being clear about: most winning
-    trades close positive by end of day well short of the stated target — see "Wins that hit the actual target" below.
-    Treat the target as a stretch level to trim into, not an expected exit. The win/loss classification (and the
-    expectancy number) already account for this correctly either way — it's the specific target <em>price</em> that's
-    rarely the real exit.
+  <div class="banner" style="border-color:#c98a2a;">
+    <strong>Verdict: this rule set has not shown a profitable edge.</strong><br><br>
+    Across <b>267 candidate setups</b> (May–Aug 2026 — the full window free 5-minute data allows), the strategy
+    produced a <b>37.5% win rate with −0.17% expectancy per trade</b>. Three separate attempts to fix it all failed:
+    <br><br>
+    1. <b>More filters didn't help.</b> Per-check analysis showed the confluence signals barely separate winners from
+    losers. "Clear air to resistance" gave +0.3pts of lift, volume surge +0.7pts; RSI band, EMA stack, prior-day-high
+    and the consolidation-squeeze check all measured <em>negative</em>. Only ADX (+5.3) and market structure (+4.8)
+    were mildly positive — both within noise at this sample size.<br>
+    2. <b>Confluence count doesn't rank quality.</b> Setups passing 10 of 11 checks won 22% of the time; those passing
+    9 won 33%. There's no reliable ordering, which is why the picks page shows the checks as observations rather than
+    as a grade.<br>
+    3. <b>No exit fixed it.</b> Targets from 1R to 5R, breakeven stops and trailing stops were all tested on identical
+    entries. Every variant was negative; the best was −0.139%/trade.
+    <br><br>
+    An earlier version of this page reported 53.8% win rate / +0.22% expectancy. That was <b>26 trades</b> — roughly
+    ±10% standard error — almost certainly noise. The larger sample supersedes it, and the honest conclusion is that
+    this is a <em>screening tool</em>, not a signal service.
+    <br><br>
+    This is not proof the approach can never work: two months is a short window and possibly an unfavourable one for
+    breakouts. But it is unproven, and it should not be monetised or presented as profitable on these numbers.
   </div>
 
   <div class="stat-grid" id="stats"></div>
@@ -83,7 +90,7 @@
   <div class="section-title">Recent trades</div>
   <div style="overflow-x:auto;">
     <table>
-      <thead><tr><th>Date</th><th>Symbol</th><th>Dir</th><th>Entry</th><th>Exit</th><th>P&amp;L%</th><th>Outcome</th></tr></thead>
+      <thead><tr><th>Date</th><th>Symbol</th><th>Checks</th><th>Entry</th><th>Exit</th><th>P&amp;L%</th><th>Outcome</th></tr></thead>
       <tbody id="trades-body"></tbody>
     </table>
   </div>
@@ -112,14 +119,16 @@ async function load() {
     `Window: ${d.period.from} to ${d.period.to} (${d.period.trading_days} trading days) · run ${new Date(d.generated_at).toLocaleString()}`;
 
   document.getElementById("stats").innerHTML =
-    statCard("Overall", d.overall) + statCard("Buy", d.buy) + statCard("Sell", d.sell);
+    statCard("Overall (top 3/day)", d.overall) +
+    ["A","B","C"].filter(g => d.by_grade[g] && d.by_grade[g].trades)
+      .map(g => statCard("Confluence " + g, d.by_grade[g])).join("");
 
   const recent = d.trades.slice(-40).reverse();
   document.getElementById("trades-body").innerHTML = recent.map(t => `
     <tr>
       <td>${t.date}</td>
       <td>${t.symbol}</td>
-      <td>${t.direction}</td>
+      <td>${t.checks_passed}/11</td>
       <td>₹${t.entry}</td>
       <td>₹${t.exit_price}</td>
       <td class="${t.outcome}">${t.pnl_pct > 0 ? "+" : ""}${t.pnl_pct}%</td>

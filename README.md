@@ -1,108 +1,132 @@
 # NSE F&O Momentum Scanner
 
-Three tools:
+**Status: this is a screening / watchlist tool, not a validated signal
+service.** Backtesting found no profitable edge — see the verdict section
+below before using it for anything, and especially before showing it to
+anyone as a recommendation.
+
+Tools:
 
 - **Morning Picks** (`morning_scan.py` + `morning.html`) — the main one. Runs
-  automatically every weekday at 9:40 AM IST via cron (and via GitHub Actions
-  on the hosted version). Screens ~200 NSE F&O stocks down to up to **4 buy
-  candidates** (sell/short is currently disabled — see below), each with an
-  entry, stop-loss, and target.
-- **Backtest** (`backtest.py` + `backtest.html`) — mechanically tests the
-  same rules over the trailing ~2 months of data and reports a real win rate.
+  automatically every weekday at ~9:40 AM IST via GitHub Actions. Screens
+  ~200 NSE F&O stocks down to the **top 3 long candidates**, each with entry,
+  stop-loss, target and the confluence signals present.
+- **Backtest** (`backtest.py` + `backtest.html`) — replays the live rules over
+  the trailing ~2 months and reports the real numbers.
+- **Research tools** — `analyze_checks.py` (which checks actually predict
+  wins) and `exit_lab.py` (does a different exit rule help). Both are one-off,
+  not part of the daily run.
 - **Full scanner** (`scanner.py` + `index.html`) — a broader end-of-day
-  gainers/losers view (~20-45 stocks). Useful for post-market review or a
-  pre-market watchlist, not for picking a single trade.
+  gainers/losers view. Post-market review, not trade selection.
 
-`scanner_core.py` holds the shared opening-range/VWAP/RVOL rules that both
-`morning_scan.py` (live) and `backtest.py` (historical) use — so the
-backtest is guaranteed to test the exact same logic the live scanner runs,
-not a re-implementation that could drift.
+`scanner_core.py` holds the rules; `price_action.py` holds the structural
+analysis (swing support/resistance, headroom, consolidation squeeze, market
+structure). Both `morning_scan.py` (live) and `backtest.py` (historical) use
+them, so the backtest always tests the shipped logic rather than a
+re-implementation that could drift.
 
-## Morning Picks — how it decides
+## How a stock gets on the list
 
-A stock only makes the shortlist if it clears **all** of these, checked as
-of whenever it runs (9:40 AM IST via cron/GitHub Actions; can also run
-manually anytime 9:30-10:00 AM):
+**Hard gate** — tradability, never relaxed. Fail any and the stock is not
+shown at all:
 
-| Signal | Requirement |
+| Requirement | Why |
 |---|---|
-| **Opening-range breakout** | price above the first 15 minutes' high (9:15-9:30) |
-| **VWAP** | trading above today's volume-weighted average price |
-| **Early relative volume** | ≥ 1.5x the 20-day average, scaled to time elapsed |
-| **Stop-loss distance** | opening-range low, within ~1.5% of entry |
-| **Liquidity** | ≥ ₹20Cr avg daily turnover |
-| **Daily trend regime** | previous close above daily EMA50 (trading with the larger trend, not against it) |
-| **EMA stack** | daily EMA9 > EMA15 > EMA50 (short/medium/long trend all aligned) |
-| **Trend strength (ADX)** | daily ADX(14) ≥ 20 (avoids choppy, non-trending names) |
-| **RSI band** | daily RSI(14) between 45-75 (momentum without being already exhausted) |
+| Price above the first 15 minutes' high | the actual breakout trigger |
+| Trading above today's VWAP | buying is real, not drift |
+| Early RVOL ≥ 1.2x | some genuine participation |
+| Move between +0.3% and +6% | meaningful but not already blown out |
+| Stop (opening-range low) within 0.15–1.5% | tight, structural risk |
+| ≥ ₹20Cr average daily turnover | liquid enough to actually trade |
 
-Each pick shows entry, stop-loss, a 3:1 reward:risk target, risk %, early
-RVOL, VWAP, ATR(14), daily RSI/ADX, EMA(9/15/50), and avg turnover. Ranked
-by a composite score, **capped at 4**. Many mornings it will show fewer, or
-zero — that's intentional, by request: quality over quantity. See "Tuning
-methodology" below for why these specific filters and this cap.
+**Confluence signals** — 11 checks spanning trend indicators (EMA 9/15/50,
+ADX, RSI) and price action (support/resistance headroom, prior-day high,
+consolidation squeeze, higher-high/higher-low structure, extension, close
+strength). These are **displayed as observations, not scored as a grade**,
+because per-check backtesting showed they don't reliably separate winners
+from losers (see verdict below). The ranking that picks the top 3 is a
+"most notable setup" heuristic — not a validated predictor.
 
-**SELL (short) signals are currently disabled** (`SELL_ENABLED = False` in
-`scanner_core.py`). Every filter combination tested in the backtest came
-back net-negative on the short side — see below. The dashboard explains
-this directly rather than silently showing nothing.
+**Sell/short is disabled** (`SELL_ENABLED = False`). Short setups tested
+net-negative in every filter combination tried. The price-action layer is
+also long-biased, so re-enabling shorts needs its checks mirrored, not just
+the flag flipped.
 
-## Backtest — read this before trusting the win rate
+## Backtest — the honest verdict
 
-`backtest.py` mechanically replays the exact same rules over every trading
-day in the trailing ~60 calendar days (Yahoo's free-tier limit for 5-minute
-data, roughly the last 2 months of trading days). For every setup that
-would have qualified, it simulates forward bar-by-bar: stop hit first =
-loss, target hit first = win, neither by end of day = resolved by closing
-price (so every trade is forced to a clean win/loss, nothing left
-ambiguous).
+**This rule set has not shown a profitable edge.** Read this before using
+the output for anything.
 
-**Current result (window: 2026-05-14 to 2026-08-05):**
+`backtest.py` mechanically replays the live rules over every trading day in
+the trailing ~60 calendar days (Yahoo's free-tier limit for 5-minute data).
+It is *day-major*: each day's candidates are pooled, ranked, and only the
+top 3 are "taken" — exactly what the dashboard shows.
 
-| | Trades | Win rate | Avg win | Avg loss | Expectancy/trade |
-|---|---|---|---|---|---|
-| Overall (buy-only, sell disabled) | 26 | **53.8%** | +1.12% | -0.82% | **+0.22%** |
+**Result over 267 candidate setups (May–Aug 2026):**
 
-**Read this honestly, including how we got here:**
+| | Trades | Win rate | Expectancy/trade |
+|---|---|---|---|
+| All hard-gate candidates | 267 | 37.5% | **−0.17%** |
+| Top 3 per day (what's shown) | 148 | 36.5% | −0.12% |
 
-- The *first* version of this scanner (opening-range breakout + VWAP + RVOL
-  only, no trend/strength filters, both buy and sell active) backtested at
-  **41.7% win rate, -0.10% expectancy/trade** over 240 trades — roughly
-  breakeven-to-negative.
-- Added daily-timeframe trend/strength filters (EMA9/15/50 trend + stack,
-  ADX(14) for trend strength, RSI(14) to avoid chasing exhausted moves) and
-  widened the reward target from 2:1 to 3:1, then swept ~9 different filter
-  combinations against the same historical data (`tune.py`) to find what
-  actually helped, rather than guessing.
-- **Consistent, honest finding across every combination tried: buy-side
-  setups had a real edge (best: 53.8% win rate, +0.22%/trade), sell-side
-  setups never once had positive expectancy** (ranged -0.07% to -0.66%/trade
-  across filter variants). This is very likely a structural feature of the
-  test window/instrument set (NSE has historically had a long bias), not a
-  fluke of one combination — so sell is switched off rather than forced to
-  look "balanced."
-- **A 70-80% win rate — the original ask — is not realistic for this style
-  of strategy (intraday breakout momentum) and tuning further will not get
-  there without fundamentally changing what the strategy is** (e.g. much
-  wider stops/targets, multi-day holds, or a mean-reversion approach instead
-  of breakout momentum — each trades away something else, like trade
-  frequency or the tight stop-loss that was explicitly requested).
-  Professional systematic intraday strategies typically run 45-55% win rate
-  and make money on reward:risk, not on being right most of the time. **A
-  53.8% win rate with positive expectancy is a genuinely good result for
-  this category** — better than being "right," it's provably profitable in
-  the backtest.
-- **26 trades is still a small sample.** This is directional evidence, not
-  proof. Re-run `backtest.py` every couple of weeks as more data accumulates
-  and watch whether the number holds, and plan for the 1-year backtest
-  already discussed before scaling this to a paid product.
-- Doesn't model slippage, brokerage/STT, or the free-data lag — real fills
-  will be slightly worse than simulated ones.
+Three separate attempts to fix this all failed, and the negative results are
+worth recording so they aren't retried blindly:
 
-Re-run anytime: `./venv/bin/python backtest.py`, then open
-**http://localhost:8000/backtest.html** (or the hosted URL). To re-explore
-filter combinations yourself: `./venv/bin/python tune.py` (fetches data once,
-tries several configs, prints a comparison table — takes several minutes).
+1. **More indicators didn't help.** `analyze_checks.py` measures each check's
+   *lift* — win rate when it passes minus win rate when it fails:
+
+   | Check | Lift |
+   |---|---|
+   | Strong trend (ADX ≥ 20) | +5.3 |
+   | Higher highs & lows | +4.8 |
+   | Volume surge (RVOL ≥ 1.5) | +0.7 |
+   | Clear air to resistance | +0.3 |
+   | Above 50 EMA | −0.1 |
+   | Above prior day high | −5.4 |
+   | EMA 9/15/50 stacked | −6.5 |
+   | RSI in healthy band | −7.9 |
+   | Broke from tight base (squeeze) | −7.9 |
+
+   Only ADX and market structure were mildly positive, both within noise at
+   this sample size. The price-action additions — support/resistance headroom
+   and the consolidation squeeze — did **not** improve accuracy.
+
+2. **Confluence count doesn't rank quality.** Setups passing 10 of 11 checks
+   won 22% of the time; those passing 9 won 33%. There is no reliable
+   ordering, so the dashboard presents the checks as *observations* rather
+   than as a grade — an A/B/C badge would imply a validated quality tier that
+   the data does not support.
+
+3. **No exit fixed it.** `exit_lab.py` tested 1R–5R targets, breakeven stops
+   and trailing stops on identical entries. Every variant was negative; the
+   best was −0.139%/trade. This matters because at a 2.5R target the
+   breakeven win rate is only ~29%, so 37.5% *should* be profitable — it
+   isn't, because only ~1 in 5 winners reaches the target while losers take
+   the full stop.
+
+**About the old 53.8% number.** An earlier version of this README reported
+53.8% win rate / +0.22% expectancy. That was **26 trades** — roughly ±10%
+standard error — i.e. almost certainly noise. It came from a much stricter
+gate that produced ~1 setup per day. The larger 267-trade sample supersedes
+it. It was reported in good faith at the time; it does not hold up.
+
+**What this does and doesn't mean.** It is *not* proof the approach can never
+work — two months is a short window and possibly an unfavourable one for
+breakouts, and behaviour could differ in a strongly trending market. But it
+is **unproven**, and it should not be monetised, gated behind a paid course,
+or presented to a community as profitable on these numbers.
+
+**To test properly you need more data.** Yahoo caps free 5-minute history at
+~60 days, which is why the sample is small. A genuine 1-year intraday
+backtest needs a paid feed (Zerodha Kite historical, TrueData, GDFL). That is
+the right gate before charging anyone for this.
+
+Re-run anytime:
+```bash
+./venv/bin/python backtest.py         # headline numbers -> backtest.html
+./venv/bin/python analyze_checks.py   # per-check lift + selectivity sweep
+./venv/bin/python exit_lab.py         # exit-rule comparison
+```
 
 ## Running it
 

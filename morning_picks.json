@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-10-19T09:49:48.262921+00:00",
-  "generated_at_ist": "2026-10-19T15:19:32.335339+05:30",
+  "generated_at": "2026-10-19T10:09:47.282173+00:00",
+  "generated_at_ist": "2026-10-19T15:39:33.213574+05:30",
   "universe_size": 200,
-  "candidates_scanned": 200,
+  "candidates_scanned": 199,
   "candidates_passing_gate": 2,
   "grade_counts": {
     "A": 0,
-    "B": 2,
-    "C": 0
+    "B": 0,
+    "C": 2
   },
   "picks": [
     {
@@ -19,8 +19,8 @@
       "risk_pct": 1.11,
       "reward_multiple": 2.5,
       "gap_pct": 0.83,
-      "rvol_early": 1.58,
-      "vwap": 5236.72,
+      "rvol_early": 1.3,
+      "vwap": 5236.59,
       "or_high": 5265.0,
       "or_low": 5210.0,
       "atr14": 136.71,
@@ -48,7 +48,7 @@
         "EMA 9/15/50 stacked": false,
         "Strong trend (ADX \u2265 20)": true,
         "RSI in healthy band": true,
-        "Volume surge (RVOL \u2265 1.5)": true,
+        "Volume surge (RVOL \u2265 1.5)": false,
         "Clear air to resistance": true,
         "Above prior day high": true,
         "Broke from tight base": false,
@@ -56,10 +56,10 @@
         "Not overextended": true,
         "Holding near day's high": true
       },
-      "checks_passed": 7,
+      "checks_passed": 6,
       "checks_total": 11,
-      "grade": "B",
-      "score": 91.13
+      "grade": "C",
+      "score": 80.29
     },
     {
       "symbol": "WIPRO",
@@ -70,8 +70,8 @@
       "risk_pct": 1.26,
       "reward_multiple": 2.5,
       "gap_pct": 0.59,
-      "rvol_early": 1.74,
-      "vwap": 184.4,
+      "rvol_early": 1.27,
+      "vwap": 184.39,
       "or_high": 185.23,
       "or_low": 183.15,
       "atr14": 5.1,
@@ -99,7 +99,7 @@
         "EMA 9/15/50 stacked": false,
         "Strong trend (ADX \u2265 20)": true,
         "RSI in healthy band": true,
-        "Volume surge (RVOL \u2265 1.5)": true,
+        "Volume surge (RVOL \u2265 1.5)": false,
         "Clear air to resistance": true,
         "Above prior day high": false,
         "Broke from tight base": false,
@@ -107,10 +107,10 @@
         "Not overextended": true,
         "Holding near day's high": true
       },
-      "checks_passed": 7,
+      "checks_passed": 6,
       "checks_total": 11,
-      "grade": "B",
-      "score": 90.9
+      "grade": "C",
+      "score": 79.51
     }
   ],
   "filters": {

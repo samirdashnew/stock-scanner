@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-11-24T14:46:44.297046+00:00",
-  "generated_at_ist": "2026-11-24T20:16:25.507941+05:30",
+  "generated_at": "2026-11-24T15:09:15.356483+00:00",
+  "generated_at_ist": "2026-11-24T20:38:51.505978+05:30",
   "universe_size": 200,
-  "candidates_scanned": 198,
+  "candidates_scanned": 199,
   "candidates_passing_gate": 6,
   "grade_counts": {
     "A": 2,
